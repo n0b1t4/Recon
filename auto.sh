@@ -1,5 +1,9 @@
-#!bin/bash
+#!/bin/bash
 
+subdomainThreads=10
+dirsearchThreads=50
+dirsearchWordlist=~/tools/dirsearch/db/dicc.txt
+massdnsWordlist=~/tools/SecLists/Discovery/DNS/clean-jhaddix-dns.txt
 
 
 
@@ -12,8 +16,7 @@ SECONDS=0
 
 domain= 
 subreport=
-usage() {-e "Usage: ./auto.sh -d domain.com [-e] [Excludes .domain.com, other.domain.com]\nOptions:/n -e\t-\tspecify 
-excluded subdomians \n"  1>&2; exit 1;}
+usage() { echo -e "Usage: ./lazyrecon.sh -d domain.com [-e] [excluded.domain.com,other.domain.com]\nOptions:\n  -e\t-\tspecify excluded subdomains\n " 1>&2; exit 1; }
 
 while getopts ":d:e:r:" o; do
     case "${o}" in
@@ -47,8 +50,7 @@ fi
 discovery(){
 	hostalive $domain
 	cleandirsearch $domain
-	aqua $domain
-
+	cleanup $domain
 	waybackrecon $domain
 	dirsearcher
 }
@@ -153,6 +155,7 @@ nsrecords(){
                 done
 
 
+
                 cat ./$domain/$foldername/cleantemp.txt | grep CNAME >> ./$domain/$foldername/cnames.txt
                 cat ./$domain/$foldername/cnames.txt | sort -u | while read line; do
                 hostrec=$(echo "$line" | awk '{print $1}')
@@ -177,6 +180,34 @@ nsrecords(){
 
 
 
+logo(){
+  #can't have a bash script without a cool logo :D
+  echo "${red}
+  _____                      
+ |  __ \                     
+ | |__) |___  ___ ___  _ __  
+ |  _  // _ \/ __/ _ \| '_ \ 
+ | | \ \  __/ (_| (_) | | | |
+ |_|  \_\___|\___\___/|_| |_|
+                             
+                             
+${reset}                                                      "
+}
+cleandirsearch(){
+	cat ./$domain/$foldername/urllist.txt | sed 's/\http\:\/\///g' |  sed 's/\https\:\/\///g' | sort -u | while read line; do
+  [ -d ~/tools/dirsearch/reports/$line/ ] && ls ~/tools/dirsearch/reports/$line/ | grep -v old | while read i; do
+  mv ~/tools/dirsearch/reports/$line/$i ~/tools/dirsearch/reports/$line/$i.old
+  done
+  done
+  }
+cleantemp(){
+
+    rm ./$domain/$foldername/temp.txt
+  	rm ./$domain/$foldername/tmp.txt
+    rm ./$domain/$foldername/domaintemp.txt
+    rm ./$domain/$foldername/cleantemp.txt
+
+}
 main(){
 if [ -z "${domain}" ]; then
 domain=${subreport[1]}
@@ -194,8 +225,8 @@ fi
   fi
 
   mkdir ./$domain/$foldername
-  mkdir ./$domain/$foldername/reports/
   mkdir ./$domain/$foldername/wayback-data/
+  mkdir ./$domain/$foldername/screenshot #implent eye witeness
   touch ./$domain/$foldername/crtsh.txt
   touch ./$domain/$foldername/mass.txt
   touch ./$domain/$foldername/cnames.txt
@@ -204,14 +235,23 @@ fi
   touch ./$domain/$foldername/temp.txt
   touch ./$domain/$foldername/tmp.txt
   touch ./$domain/$foldername/domaintemp.txt
+  touch ./$domain/$foldername/ipaddress.txt
   touch ./$domain/$foldername/cleantemp.txt
+
+  cleantemp
+  recon $domain
+  echo "${green}Scan for $domain finished successfully${reset}"
+  duration=$SECONDS
+  echo "Scan completed in : $(($duration / 60)) minutes and $(($duration % 60)) seconds."
+  cleantemp
+  stty sane
+  tput sgr0
 }
 todate=$(date +"%Y-%m-%d")
 path=$(pwd)
 foldername=recon-$todate
 source ~/.bash_profile
 main $domain
-
 
 
 
