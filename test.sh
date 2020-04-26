@@ -92,6 +92,11 @@ recon(){
   echo "${green}Recon started on $domain ${reset}"
   echo "Listing subdomains using sublister..."
   python ~/tools/Sublist3r/sublist3r.py -d $domain -t 10 -v -o ./$domain/$foldername/$domain.txt > /dev/null
+  echo "Listing subdomains using subfinder..."
+  subfinder -d $domain -t 10 -o ./$domain/$foldername/$domain.txt > /dev/null
+  echo "Listing subdomains using amass..."
+  amass enum -d $domain  -o ./$domain/$foldername/$domain.txt > /dev/null
+  echo "${green}Subdomains gathered. ${reset}"
   echo "Checking certspotter..."
   curl -s https://certspotter.com/api/v0/certs\?domain\=$domain | jq '.[].dns_names[]' | sed 's/\"//g' | sed 's/\*\.//g' | sort -u | grep $domain >> ./$domain/$foldername/$domain.txt
   nsrecords $domain
@@ -99,7 +104,6 @@ recon(){
   echo "Starting discovery..."
   discovery $domain
   cat ./$domain/$foldername/$domain.txt | sort -u > ./$domain/$foldername/$domain.txt
-
 }
 
 
